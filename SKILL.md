@@ -95,13 +95,24 @@ swift scripts/compress_pdf.swift \
   --jpeg-quality 0.78
 ```
 
+For target-seeking compression, let the script auto-adjust toward a requested size:
+
+```bash
+swift scripts/compress_pdf.swift \
+  --input /path/to/input.pdf \
+  --output /path/to/input-compressed.pdf \
+  --target-mb 20
+```
+
 Useful presets:
 - balanced default: `--dpi 180 --jpeg-quality 0.78`
 - clearer but larger: `--dpi 200 --jpeg-quality 0.82`
 - smaller but softer: `--dpi 150 --jpeg-quality 0.72`
 - scanned sharing copy: `--dpi 150 --jpeg-quality 0.65 --grayscale`
 
-If the result is still too large, adjust in this order:
+If the user gives a target size, prefer `--target-mb` first and let the script try a few parameter combinations automatically.
+
+If you need to tune manually, adjust in this order:
 1. 200 DPI -> 180 DPI
 2. 180 DPI -> 150 DPI
 3. reduce JPEG quality slightly
