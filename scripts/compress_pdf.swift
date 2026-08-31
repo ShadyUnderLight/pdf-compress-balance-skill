@@ -281,7 +281,7 @@ func candidatePairs(seedDPI: Double, seedQuality: Double) -> [(Double, Double)] 
 func autoCompress(cfg: Config, inputURL: URL, outputURL: URL) throws -> AttemptResult {
     let targetBytes = UInt64(cfg.targetMB! * 1024.0 * 1024.0)
     let fm = FileManager.default
-    let tempRoot = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("pdf-compress-balance-\(UUID().uuidString)", isDirectory: true)
+    let tempRoot = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("papertrim-\(UUID().uuidString)", isDirectory: true)
     try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
     defer { try? fm.removeItem(at: tempRoot) }
 

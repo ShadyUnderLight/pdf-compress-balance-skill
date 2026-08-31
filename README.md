@@ -1,117 +1,104 @@
-# pdf-compress-balance-skill
+# PaperTrim
 
-面向 **OpenClaw / Codex 类 Agent** 的 PDF 压缩技能仓库，目标不是“尽量保留可编辑性”，而是把**作品集、幻灯片导出、设计型 PDF** 压到更适合分享 / 上传的体积，同时尽量保住正常屏幕阅读质量。
+**Smart PDF compression for screen-first sharing.**
 
-这个 skill 的核心判断是：
-**先分类型，再压缩。**
-不是所有 PDF 都该用同一种方法。
+PaperTrim is a PDF compression toolkit that balances file size and screen readability. It is designed for the PDFs that ordinary compressors struggle with — portfolios, slide decks, and other design-heavy exports from Canva, Figma, PowerPoint, and Keynote.
 
----
-
-## 这个仓库解决什么问题
-
-很多大 PDF，尤其是下面这些来源：
-
-- Canva 导出的作品集
-- Figma 导出的 portfolio / case study
-- PowerPoint / Keynote 导出的 deck
-- 视觉排版很重的简历
-- 图片很多、渐变很多、阴影很多的多页 PDF
-
-看起来只是一个 PDF，但内部常常包含大量：
-
-- 嵌入字体
-- 矢量对象
-- 透明度
-- 阴影
-- 渐变
-- 多层页面元素
-
-这类文件如果只做普通 PDF recompress，压缩效果往往一般。
-
-这个 skill 的核心路线是：
-对于**设计型 / 图像型 PDF**，优先考虑把每一页以合适 DPI 栅格化，再重建为新的 PDF。这样通常能大幅减少体积，同时保住正常阅读观感。
+Ordinary PDF recompression tweaks embedded streams and objects. For design-heavy PDFs that contain many fonts, vector shapes, transparencies, shadows, gradients, and layered page structures, that approach often saves little. PaperTrim takes a different route: it classifies the PDF first, then chooses a compression strategy that matches the document type.
 
 ---
 
-## 核心能力
+## Why PaperTrim
 
-### 1. 先识别 PDF 类型，不盲压
-这个 skill 会先把 PDF 分成三类：
+Many large PDFs look simple but are expensive to store:
 
-- **Type A: text-first**：文字为主，如合同、论文、Word 导出的报告
-- **Type B: design-heavy**：设计感强，如作品集、Deck、Canva/Figma/PPT 导出
-- **Type C: scanned**：扫描件、拍照文档、扫描表单
+- embedded fonts
+- vector objects and layered elements
+- transparency, shadows, and gradients
+- high-resolution placed images repeated across pages
 
-只有在 **Type B / Type C** 等更适合的情况下，才推荐走 raster-rebuild 路线。
+Standard object-level recompression preserves the full structure but removes little of this overhead. For design-heavy documents the dominant cost is the structure itself.
 
-### 2. 优先优化“屏幕阅读质量”
-这个 skill 追求的是：
+PaperTrim addresses this by optionally rasterizing each page at a balanced DPI and rebuilding the PDF from JPEG-encoded page images. This collapses font, vector, and layer overhead into one image per page, which often yields significantly smaller files while keeping normal screen reading quality strong.
 
-- 100% 到 150% 缩放下清晰可读
-- 手机 / 笔记本正常浏览体验不错
-- 文件体积适合发邮件、投递、上传平台
+PaperTrim does not apply raster-rebuild blindly. It classifies first.
 
-它**不追求**：
+## How it works
 
-- 无限放大仍像矢量一样锐利
-- 文本继续完全可选中 / 可搜索 / 可编辑
-- 作为印刷母版或继续编辑的源文件
+```
+Classify → Choose strategy → Compress → Compare result
+```
 
-### 3. 自带可执行脚本
-仓库内置一个 macOS 取向的 Swift 脚本：
+1. **Classify** the PDF as text-first, design-heavy, or scanned.
+2. **Choose strategy** — lighter optimization for text-first documents, raster-rebuild for design-heavy/scanned when appropriate.
+3. **Compress** with the bundled Swift script (PDFKit + AppKit) or another suitable tool.
+4. **Compare result** — report original size, compressed size, reduction, and quality tradeoff. If the result is larger, PaperTrim says so explicitly.
 
-- 用 PDFKit / AppKit 将每页渲染为图片
-- 用 JPEG 编码页面图像
-- 重新拼成新的 image-based PDF
-- 输出原始体积、压缩后体积、压缩比例
-- 默认拒绝覆盖原文件
+## PDF types
 
-这意味着它不是纯“提示词说明书”，而是一个可以直接执行的 skill。
+### Type A: text-first
 
----
+Contracts, academic papers, reports exported from Word, and other documents that are mostly text with simple charts.
 
-## 仓库结构
+Preference: try lighter/object-level compression first. Avoid rasterization unless the size target cannot be met otherwise, since rasterization removes selectable text and sharp vector rendering at high zoom.
+
+### Type B: design-heavy
+
+Portfolios, case studies, visually styled resumes, posters, Canva/Figma exports, and presentation decks from PowerPoint/Keynote. Includes other image-heavy, visually dense multi-page PDFs.
+
+Preference: rasterize each page and rebuild from page images. This is usually far more effective than naive recompression for this category.
+
+### Type C: scanned
+
+Scanned books, scanned forms, and photographed documents.
+
+Preference: downsample, apply careful JPEG compression, and consider grayscale if acceptable.
+
+## Best for
+
+- portfolios
+- presentation decks
+- Canva / Figma exports
+- design-heavy resumes
+- case studies
+- image-heavy PDFs
+- PDFs intended for email, upload, or screen sharing
+
+## Not recommended for
+
+- legal documents
+- academic papers requiring selectable/searchable text
+- editable master files
+- print masters
+- documents where OCR/searchability must remain intact
+
+## Included tools
+
+- **Agent skill instructions** (`SKILL.md`) — classification rules, strategy selection, presets, and safety guidance for automation
+- **Packaged skill file** (`papertrim.skill`) — distributable bundle containing the skill and script
+- **macOS-oriented Swift compression script** (`scripts/compress_pdf.swift`) — runnable raster-rebuild workflow
+- **PDFKit / AppKit based workflow** — renders each page, encodes as JPEG, and rebuilds a new image-based PDF; reports sizes and refuses to overwrite the original
+
+Structure:
 
 ```text
 .
-├── README.md                    # 中文说明
-├── SKILL.md                     # 给 Agent 用的 skill 主说明
-├── pdf-compress-balance.skill   # 已打包好的分发文件
+├── README.md              # project overview (this file)
+├── SKILL.md               # agent skill instructions
+├── papertrim.skill        # packaged distributable
 └── scripts/
-    └── compress_pdf.swift       # macOS 下可直接运行的压缩脚本
+    └── compress_pdf.swift # Swift raster-rebuild script
 ```
 
----
+## Usage
 
-## 适合什么场景
+### As an agent skill
 
-特别适合：
+If your environment supports skill packages, use `papertrim.skill` directly.
 
-- 作品集 PDF 太大，想压到适合投递
-- 幻灯片导出的 PDF 体积过大，想便于分享
-- 设计型简历 / case study / proposal 想兼顾观感和体积
-- 图片较多的多页 PDF 想显著减小文件大小
+### Run the script
 
-不太适合：
-
-- 法律文件
-- 学术论文
-- 必须保留 OCR / 搜索 / 复制能力的文档
-- 需要后续继续编辑的源文件
-- 印刷级母版文件
-
----
-
-## 使用方式
-
-### 1. 直接作为 skill 使用
-如果你使用 OpenClaw / 支持技能包的 Agent 环境，可以直接使用仓库里的：
-
-- `pdf-compress-balance.skill`
-
-### 2. 直接运行脚本
-在 macOS 环境下，可以直接执行：
+Requires macOS with Swift toolchain (uses PDFKit and AppKit).
 
 ```bash
 swift scripts/compress_pdf.swift \
@@ -121,60 +108,66 @@ swift scripts/compress_pdf.swift \
   --jpeg-quality 0.78
 ```
 
-常用预设：
+With a target size, let the script search automatically:
 
-- 平衡默认：`--dpi 180 --jpeg-quality 0.78`
-- 更清楚但更大：`--dpi 200 --jpeg-quality 0.82`
-- 更小但更软：`--dpi 150 --jpeg-quality 0.72`
-- 扫描件分享版：`--dpi 150 --jpeg-quality 0.65 --grayscale`
+```bash
+swift scripts/compress_pdf.swift \
+  --input /path/to/input.pdf \
+  --output /path/to/input-compressed.pdf \
+  --target-mb 20
+```
 
-如果结果仍偏大，推荐按这个顺序继续压：
+Presets:
+
+- **Balanced (default):** `--dpi 180 --jpeg-quality 0.78`
+- **Higher quality:** `--dpi 200 --jpeg-quality 0.82`
+- **Smaller size:** `--dpi 150 --jpeg-quality 0.72`
+- **Scanned sharing:** `--dpi 150 --jpeg-quality 0.65 --grayscale`
+
+Additional options:
+
+- `--grayscale` — convert pages to grayscale
+- `--max-pages N` — process only the first N pages (useful for quick tuning samples, not for final delivery)
+- `--target-mb` with `--max-attempts` — auto-tries parameter combinations toward the target
+
+## Compression strategy
+
+If the initial result is still too large, adjust in this order:
 
 1. 200 DPI → 180 DPI
 2. 180 DPI → 150 DPI
-3. JPEG 质量略降
-4. 必要时转灰度
-5. 低于 150 DPI 前先明确告知清晰度风险
+3. reduce JPEG quality slightly
+4. enable grayscale only if acceptable
+5. going below 150 DPI requires explicit warning — readability may degrade noticeably
 
----
+Do not promise an aggressive target without warning about visible quality loss.
 
-## 这个 skill 的核心 tradeoff
+## Tradeoff
 
-它的优势在于：
+PaperTrim optimizes for:
 
-- 页面外观保留得通常不错
-- 对设计型 PDF 的减积效果常常明显
-- 更适合投递、邮件、上传
+> **looks close to the original, but much smaller**
 
-它的代价在于：
+Not for:
 
-- 文本不再是原始矢量文本
-- 极高倍数放大会更软
-- 复制 / 选中 / 搜索能力可能丢失
-- 不适合作为可编辑母版继续使用
+> **preserve the complete editable/vector structure**
 
-一句话概括：
-**它优化的是“看起来像原来、但小很多”，不是“保留原结构还能无限编辑”。**
+Concretely:
 
----
+- text may lose its original vector/text layer and become image-based
+- search, copy, and text selection may no longer work
+- extreme zoom will look softer than the original vector PDF
+- the result is not suitable as an editable source, print master, legal record, or any document where OCR/searchability must be preserved
 
-## 结果汇报建议
+PaperTrim makes this tradeoff explicit when it uses raster-rebuild and reports whether text remains selectable.
 
-如果你把它用于实际压缩，推荐这样解释结果：
+## Safety
 
-> 我不是只对原 PDF 做普通压缩，而是把每一页按一个平衡分辨率栅格化后重建成新的 PDF。这样能去掉很多字体、矢量、透明度和图层对象的开销，同时保住正常屏幕阅读观感。代价是文本不再保留为原始矢量文本，所以高倍放大和后续编辑会变差。
-
----
-
-## 安全原则
-
-- 默认不要覆盖原始 PDF
-- 一律输出新文件
-- 如果用户同时要“很小 + 可编辑 + 可搜索”，应明确说明这些目标可能冲突
-- 如果目标体积极端激进，应先提示可读性可能下降
-- 如果压完反而更大，应明确说明该 PDF 不适合 raster-rebuild 路线
-
----
+- Never overwrite the original PDF by default — always write to a new file. The script refuses to use the same path for input and output.
+- If the compressed output is larger than the input, report it plainly. This usually means raster-rebuild was the wrong method for that file.
+- If a target size is extremely aggressive, warn that readability will degrade.
+- Goals like "very small + fully editable + fully searchable + high fidelity" may conflict — call out the conflict when it arises.
+- If the source is already well-optimized, say the target may not be reachable without visible loss.
 
 ## License
 

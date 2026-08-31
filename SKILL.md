@@ -1,11 +1,11 @@
 ---
-name: pdf-compress-balance
+name: papertrim
 description: Compress large PDFs for sharing while preserving good screen-reading quality, especially portfolios, slide exports, Canva/Figma/PowerPoint PDFs, decks, and other design-heavy or image-heavy PDFs. Use when a user wants a PDF reduced to a target size and can accept loss of vector text, searchability, or editability; first classify the PDF as text-first, design-heavy, or scanned, then choose lighter optimization or raster-rebuild accordingly.
 ---
 
-# PDF Compress Balance
+# PaperTrim
 
-Compress PDFs for sharing quality, not source-master fidelity. Prefer the smallest method that still keeps pages clear at normal phone and laptop reading zoom.
+Smart PDF compression for screen-first sharing. PaperTrim balances file size and screen readability. Compress PDFs for sharing quality, not source-master fidelity. Prefer the smallest method that still keeps pages clear at normal phone and laptop reading zoom.
 
 ## Workflow
 
